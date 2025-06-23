@@ -7,8 +7,13 @@ import (
 )
 
 type MeihuaReq struct {
-	g.Meta `path:"/meihua" tags:"Meihua" method:"get" summary:"获取梅花基础盘信息"`
-	Time   string `v:"datetime" dc:"时间,格式如： 2006-01-02 12:00:00"`
+	g.Meta   `path:"/meihua" tags:"Meihua" method:"get" summary:"获取梅花基础盘信息"`
+	Time     string `v:"datetime" dc:"时间,格式如： 2006-01-02 12:00:00"`
+	Type     string `v:"in:time,number,manual" dc:"起卦类型"`
+	ShangShu int    `v:"required-if:Type,number" dc:"上数,双数起卦时必填"`
+	XiaShu   int    `v:"required-if:Type,number" dc:"下数,双数起卦时必填"`
+	Manual   string `v:"required-if:Type,manual" dc:"手动卦,6位二进制字符串，如：111000"`
+	DongYao  int    `v:"required-if:Type,manual|between:1,6" dc:"动爻位置，1-6"`
 }
 type MeihuaRes struct {
 	*utility.QiguaResult

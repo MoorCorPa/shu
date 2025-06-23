@@ -67,8 +67,8 @@ func TestMeihuaQigua_Qigua(t *testing.T) {
 func TestMeihuaQigua_QiguaByNumber(t *testing.T) {
 	mq := NewMeihuaQigua()
 
-	// 测试数字起卦
-	result, err := mq.QiguaByNumber(123, 456, 789)
+	// 测试双数起卦（使用当前时间）
+	result, err := mq.QiguaByNumber(23, 45, "")
 
 	if err != nil {
 		t.Errorf("数字起卦失败: %v", err)
@@ -101,7 +101,7 @@ func TestMeihuaQigua_QiguaByNumber(t *testing.T) {
 		t.Error("四柱空亡为空")
 	}
 
-	t.Logf("数字起卦结果:")
+	t.Logf("双数起卦结果:")
 	t.Logf("时间: %s", result.Time)
 	t.Logf("四柱: %s", result.SiZhu)
 	t.Logf("四柱空亡: %s", result.KongWang)
@@ -110,6 +110,94 @@ func TestMeihuaQigua_QiguaByNumber(t *testing.T) {
 	t.Logf("变卦: %s (%s)", result.BianGuaName, result.BianGuaYao)
 	t.Logf("错卦: %s (%s)", result.CuoGuaName, result.CuoGuaYao)
 	t.Logf("综卦: %s (%s)", result.ZongGuaName, result.ZongGuaYao)
+}
+
+func TestMeihuaQigua_QiguaByManual(t *testing.T) {
+	mq := NewMeihuaQigua()
+
+	// 测试手动排卦（指定时间）
+	result, err := mq.QiguaByManual("111000", 3, "2024-01-15 14:30:00")
+	if err != nil {
+		t.Errorf("手动排卦失败: %v", err)
+		return
+	}
+
+	// 验证结果不为空
+	if result == nil {
+		t.Error("起卦结果为空")
+		return
+	}
+
+	// 验证主卦
+	if result.ZhuGuaYao != "111000" {
+		t.Errorf("主卦错误，期望: 111000, 实际: %s", result.ZhuGuaYao)
+	}
+
+	// 验证变卦（第3爻变化）
+	if result.BianGuaYao != "110000" {
+		t.Errorf("变卦错误，期望: 110000, 实际: %s", result.BianGuaYao)
+	}
+
+	t.Logf("手动排卦结果:")
+	t.Logf("时间: %s", result.Time)
+	t.Logf("四柱: %s", result.SiZhu)
+	t.Logf("四柱空亡: %s", result.KongWang)
+	t.Logf("主卦: %s (%s)", result.ZhuGuaName, result.ZhuGuaYao)
+	t.Logf("互卦: %s (%s)", result.HuGuaName, result.HuGuaYao)
+	t.Logf("变卦: %s (%s)", result.BianGuaName, result.BianGuaYao)
+	t.Logf("错卦: %s (%s)", result.CuoGuaName, result.CuoGuaYao)
+	t.Logf("综卦: %s (%s)", result.ZongGuaName, result.ZongGuaYao)
+}
+
+func TestMeihuaQigua_QiguaByManual_CurrentTime(t *testing.T) {
+	mq := NewMeihuaQigua()
+
+	// 测试手动排卦（使用当前时间）
+	result, err := mq.QiguaByManual("101010", 1, "")
+	if err != nil {
+		t.Errorf("手动排卦失败: %v", err)
+		return
+	}
+
+	// 验证主卦
+	if result.ZhuGuaYao != "101010" {
+		t.Errorf("主卦错误，期望: 101010, 实际: %s", result.ZhuGuaYao)
+	}
+
+	// 验证变卦（第1爻变化）
+	if result.BianGuaYao != "101011" {
+		t.Errorf("变卦错误，期望: 101011, 实际: %s", result.BianGuaYao)
+	}
+
+	t.Logf("手动排卦（当前时间）结果:")
+	t.Logf("主卦: %s (%s)", result.ZhuGuaName, result.ZhuGuaYao)
+	t.Logf("变卦: %s (%s)", result.BianGuaName, result.BianGuaYao)
+}
+
+func TestMeihuaQigua_QiguaByManual_InvalidInput(t *testing.T) {
+	mq := NewMeihuaQigua()
+
+	// 测试无效输入
+	testCases := []struct {
+		zhuGuaYao string
+		dongYao   int
+		timeStr   string
+		desc      string
+	}{
+		{"11100", 3, "", "卦序列长度不足"},
+		{"1110001", 3, "", "卦序列长度过长"},
+		{"111002", 3, "", "卦序列包含非二进制字符"},
+		{"111000", 0, "", "动爻位置小于1"},
+		{"111000", 7, "", "动爻位置大于6"},
+		{"111000", 3, "invalid-time", "时间格式错误"},
+	}
+
+	for _, tc := range testCases {
+		_, err := mq.QiguaByManual(tc.zhuGuaYao, tc.dongYao, tc.timeStr)
+		if err == nil {
+			t.Errorf("%s: 期望错误但没有错误", tc.desc)
+		}
+	}
 }
 
 func TestGetDizhiIndex(t *testing.T) {
@@ -180,16 +268,18 @@ func TestQigua_DifferentTimes(t *testing.T) {
 func TestQiguaByNumber_DifferentNumbers(t *testing.T) {
 	mq := NewMeihuaQigua()
 
-	// 测试不同数字组合
+	// 测试不同数字组合（双数起卦）
 	numbers := [][]int{
-		{1, 1, 1},
-		{8, 8, 8},
-		{100, 200, 300},
-		{7, 14, 21},
+		{1, 1},
+		{8, 8},
+		{25, 30},
+		{7, 14},
+		{100, 200},
+		{123, 456},
 	}
 
 	for _, nums := range numbers {
-		result, err := mq.QiguaByNumber(nums[0], nums[1], nums[2])
+		result, err := mq.QiguaByNumber(nums[0], nums[1], "")
 		if err != nil {
 			t.Errorf("数字 %v 起卦失败: %v", nums, err)
 			continue
@@ -202,4 +292,30 @@ func TestQiguaByNumber_DifferentNumbers(t *testing.T) {
 
 		t.Logf("数字 %v 起卦: %s (%s)", nums, result.ZhuGuaName, result.ZhuGuaYao)
 	}
+}
+
+func TestQiguaByNumber_WithCustomTime(t *testing.T) {
+	mq := NewMeihuaQigua()
+
+	// 测试双数起卦配合自定义时间
+	timeStr := "2024-01-15 14:30:00"
+	result, err := mq.QiguaByNumber(23, 45, timeStr)
+	if err != nil {
+		t.Errorf("双数起卦（自定义时间）失败: %v", err)
+		return
+	}
+
+	// 验证时间
+	if result.Time != timeStr {
+		t.Errorf("时间不匹配，期望: %s, 实际: %s", timeStr, result.Time)
+	}
+
+	// 验证基本格式
+	if len(result.ZhuGuaYao) != 6 {
+		t.Errorf("主卦格式错误: %s", result.ZhuGuaYao)
+	}
+
+	t.Logf("双数起卦（自定义时间）结果:")
+	t.Logf("时间: %s", result.Time)
+	t.Logf("主卦: %s (%s)", result.ZhuGuaName, result.ZhuGuaYao)
 }

@@ -141,23 +141,48 @@ func (m *MeihuaQigua) Qigua(timeStr string) (*QiguaResult, error) {
 	}, nil
 }
 
-// QiguaByNumber 数字起卦法
-func (m *MeihuaQigua) QiguaByNumber(num1, num2, num3 int) (*QiguaResult, error) {
-	now := time.Now()
-	timeStr := now.Format("2006-01-02 15:04:05")
+// QiguaByNumber 双数起卦法
+func (m *MeihuaQigua) QiguaByNumber(shangShu, xiaShu int, timeStr string) (*QiguaResult, error) {
+	// 解析时间，如果为空则使用当前时间
+	var t time.Time
+	var err error
+	if timeStr == "" {
+		t = time.Now()
+		timeStr = t.Format("2006-01-02 15:04:05")
+	} else {
+		t, err = time.Parse("2006-01-02 15:04:05", timeStr)
+		if err != nil {
+			return nil, fmt.Errorf("时间格式错误: %v", err)
+		}
+	}
+
+	// 获取时辰的地支序号
+	year := int64(t.Year())
+	month := int64(t.Month())
+	day := int64(t.Day())
+	hour := int64(t.Hour())
+	minute := int64(t.Minute())
+	second := int64(t.Second())
+
+	c := calendar.BySolar(year, month, day, hour, minute, second)
+	bytes, _ := c.ToJSON()
+	var result map[string]interface{}
+	json.Unmarshal(bytes, &result)
+	ganzhi := result["ganzhi"].(map[string]interface{})
+	hourDizhi := getDizhiIndex(extractDizhi(ganzhi["hour"].(string)))
 
 	// 计算卦数
-	shangGuaNum := num1 % 8
+	shangGuaNum := shangShu % 8
 	if shangGuaNum == 0 {
 		shangGuaNum = 8
 	}
 
-	xiaGuaNum := num2 % 8
+	xiaGuaNum := xiaShu % 8
 	if xiaGuaNum == 0 {
 		xiaGuaNum = 8
 	}
 
-	dongYaoNum := (num1 + num2 + num3) % 6
+	dongYaoNum := (shangShu + xiaShu + hourDizhi) % 6
 	if dongYaoNum == 0 {
 		dongYaoNum = 6
 	}
@@ -174,8 +199,8 @@ func (m *MeihuaQigua) QiguaByNumber(num1, num2, num3 int) (*QiguaResult, error) 
 	zongGua := reverseGua(zhuGua)
 
 	// 计算四柱和四柱空亡
-	siZhu := calculateSiZhu(now)
-	kongWang := calculateSiZhuKongWang(now)
+	siZhu := calculateSiZhu(t)
+	kongWang := calculateSiZhuKongWang(t)
 
 	return &QiguaResult{
 		Time:        timeStr,
@@ -183,6 +208,63 @@ func (m *MeihuaQigua) QiguaByNumber(num1, num2, num3 int) (*QiguaResult, error) 
 		KongWang:    kongWang,
 		ZhuGuaName:  getGuaName(zhuGua),
 		ZhuGuaYao:   zhuGua,
+		HuGuaName:   getGuaName(huGua),
+		HuGuaYao:    huGua,
+		BianGuaName: getGuaName(bianGua),
+		BianGuaYao:  bianGua,
+		CuoGuaName:  getGuaName(cuoGua),
+		CuoGuaYao:   cuoGua,
+		ZongGuaName: getGuaName(zongGua),
+		ZongGuaYao:  zongGua,
+	}, nil
+}
+
+// QiguaByManual 手动排卦法
+func (m *MeihuaQigua) QiguaByManual(zhuGuaYao string, dongYao int, timeStr string) (*QiguaResult, error) {
+	// 验证卦序列格式
+	if len(zhuGuaYao) != 6 {
+		return nil, fmt.Errorf("卦序列必须是6位二进制字符串")
+	}
+	for _, char := range zhuGuaYao {
+		if char != '0' && char != '1' {
+			return nil, fmt.Errorf("卦序列只能包含0和1")
+		}
+	}
+
+	// 验证动爻位置
+	if dongYao < 1 || dongYao > 6 {
+		return nil, fmt.Errorf("动爻位置必须在1-6之间")
+	}
+
+	// 解析时间，如果为空则使用当前时间
+	var t time.Time
+	var err error
+	if timeStr == "" {
+		t = time.Now()
+		timeStr = t.Format("2006-01-02 15:04:05")
+	} else {
+		t, err = time.Parse("2006-01-02 15:04:05", timeStr)
+		if err != nil {
+			return nil, fmt.Errorf("时间格式错误: %v", err)
+		}
+	}
+
+	// 计算各种卦象
+	huGua := zhuGuaYao[1:4] + zhuGuaYao[2:5]
+	bianGua := calculateBianGua(zhuGuaYao, dongYao)
+	cuoGua := calculateCuoGua(zhuGuaYao)
+	zongGua := reverseGua(zhuGuaYao)
+
+	// 计算四柱和四柱空亡
+	siZhu := calculateSiZhu(t)
+	kongWang := calculateSiZhuKongWang(t)
+
+	return &QiguaResult{
+		Time:        timeStr,
+		SiZhu:       siZhu,
+		KongWang:    kongWang,
+		ZhuGuaName:  getGuaName(zhuGuaYao),
+		ZhuGuaYao:   zhuGuaYao,
 		HuGuaName:   getGuaName(huGua),
 		HuGuaYao:    huGua,
 		BianGuaName: getGuaName(bianGua),

@@ -6,6 +6,7 @@ import (
 	"github.com/gogf/gf/v2/os/gctx"
 
 	"shu/internal/cmd"
+	_ "shu/internal/packed"
 )
 
 func main() {
