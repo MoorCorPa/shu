@@ -67,6 +67,14 @@ type QiguaResult struct {
 	ZongGuaYao  string `json:"zong_gua_yao"`
 }
 
+// HuGuaResult 互卦结果
+type HuGuaResult struct {
+	ShangHuGuaName string `json:"shang_hu_gua_name"`
+	ShangHuGuaYao  string `json:"shang_hu_gua_yao"`
+	XiaHuGuaName   string `json:"xia_hu_gua_name"`
+	XiaHuGuaYao    string `json:"xia_hu_gua_yao"`
+}
+
 // Qigua 根据时间起卦（按地支取数）
 func (m *MeihuaQigua) Qigua(timeStr string) (*QiguaResult, error) {
 	t, _ := time.Parse("2006-01-02 15:04:05", timeStr)
@@ -486,4 +494,59 @@ func calculateKongWangByOrder(order int) string {
 	}
 
 	return kong1 + kong2
+}
+
+// GetHuGua 获取卦的上互卦和下互卦
+func (m *MeihuaQigua) GetHuGua(guaSequence string) (*HuGuaResult, error) {
+	// 验证卦序列格式
+	if len(guaSequence) != 6 {
+		return nil, fmt.Errorf("卦序列必须是6位二进制字符串")
+	}
+	for _, char := range guaSequence {
+		if char != '0' && char != '1' {
+			return nil, fmt.Errorf("卦序列只能包含0和1")
+		}
+	}
+
+	// 计算上互卦
+	// 上互1：取前五位，前三位+后三位
+	front5 := guaSequence[:5]           // 前五位：10100
+	shangHu1 := front5[:3] + front5[2:] // 前三位(101) + 后三位(100) = 101100
+
+	// 上互2：取前四位，前三位+后三位
+	front4 := guaSequence[:4]           // 前四位：1010
+	shangHu2 := front4[:3] + front4[1:] // 前三位(101) + 后三位(010) = 101010
+
+	// 计算下互卦
+	// 下互1：取后五位，前三位+后三位
+	back5 := guaSequence[1:]        // 后五位：01001
+	xiaHu1 := back5[:3] + back5[2:] // 前三位(010) + 后三位(001) = 010001
+
+	// 下互2：取后四位，前三位+后三位
+	back4 := guaSequence[2:]        // 后四位：1001
+	xiaHu2 := back4[:3] + back4[1:] // 前三位(100) + 后三位(001) = 100001
+
+	// 获取卦名
+	shangHu1Name := getGuaName(shangHu1)
+	shangHu2Name := getGuaName(shangHu2)
+	xiaHu1Name := getGuaName(xiaHu1)
+	xiaHu2Name := getGuaName(xiaHu2)
+
+	return &HuGuaResult{
+		ShangHuGuaName: shangHu1Name + "," + shangHu2Name,
+		ShangHuGuaYao:  shangHu1 + "," + shangHu2,
+		XiaHuGuaName:   xiaHu1Name + "," + xiaHu2Name,
+		XiaHuGuaYao:    xiaHu1 + "," + xiaHu2,
+	}, nil
+}
+
+// GetGuaSequenceByName 根据卦名获取卦序列
+func (m *MeihuaQigua) GetGuaSequenceByName(guaName string) (string, error) {
+	// 遍历六十四卦名称对应表找到匹配的卦序列
+	for sequence, name := range liushisiguaNames {
+		if name == guaName {
+			return sequence, nil
+		}
+	}
+	return "", fmt.Errorf("未找到卦名: %s", guaName)
 }
