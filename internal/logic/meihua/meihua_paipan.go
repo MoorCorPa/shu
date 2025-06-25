@@ -13,9 +13,10 @@ func (m *Meihua) Paipan(ctx context.Context, req *v1.MeihuaReq) (res *v1.MeihuaR
 
 	var result *utility.QiguaResult
 
-	// 根据起卦类型选择相应的起卦方式
+	// 根据起卦类型选择相应的起卦方式，默认使用时间起卦
 	switch req.Type {
-	case "time":
+	case "time", "":
+		// 时间起卦（默认方式）
 		result, err = qigua.Qigua(req.Time)
 		if err != nil {
 			return nil, fmt.Errorf("时间起卦失败: %v", err)

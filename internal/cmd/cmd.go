@@ -19,10 +19,12 @@ var (
 			s := g.Server()
 			s.Group("/", func(group *ghttp.RouterGroup) {
 				group.Middleware(ghttp.MiddlewareHandlerResponse)
+				group.Middleware(ghttp.MiddlewareCORS)
 				group.Bind(
 					shu.NewV1(),
 				)
 			})
+			s.SetPort(8001)
 			s.Run()
 			return nil
 		},

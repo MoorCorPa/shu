@@ -78,6 +78,9 @@ type HuGuaResult struct {
 // Qigua 根据时间起卦（按地支取数）
 func (m *MeihuaQigua) Qigua(timeStr string) (*QiguaResult, error) {
 	t, _ := time.Parse("2006-01-02 15:04:05", timeStr)
+	if t.IsZero() {
+		t = time.Now()
+	}
 
 	year := int64(t.Year())
 	month := int64(t.Month())
